@@ -1,7 +1,7 @@
 #include <iostream>
 #include "raylib.h"
 #include "emscripten_utils.h"
-#include "impl/imgui_impl.h"
+#include "impl/imgui/imgui_impl.h"
 #include "game/game.h"
 
 using namespace std;

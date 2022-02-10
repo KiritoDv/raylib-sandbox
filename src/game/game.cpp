@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include "imgui.h"
+#include "impl/imgui/imgui_impl.h"
 #include <math.h>
 #include <vector>
 #include "chunks/chunk.h"
@@ -90,12 +91,12 @@ void MarsGame::init(){
 void MarsGame::imgui(){
     ImGui::Begin("Map Specifications", NULL, ImGuiWindowFlags_None);
         ImGui::Text("Cubes: %d", (MAP_X_LIMIT * MAP_Y_LIMIT) * (16 * 16));
-        // ImGui::SliderFloatWithSteps("Angle X", &angle.x, -1.0f, 1.0f, 0.05f, NULL);
-        // ImGui::SliderFloatWithSteps("Angle Y", &angle.y, -1.0f, 1.0f, 0.05f, NULL);
-        // ImGui::SliderFloatWithSteps("Angle Z", &angle.z, -1.0f, 1.0f, 0.05f, NULL);
+        ImGuiExt::SliderFloatWithSteps("Angle X", &angle.x, -1.0f, 1.0f, 0.05f, NULL);
+        ImGuiExt::SliderFloatWithSteps("Angle Y", &angle.y, -1.0f, 1.0f, 0.05f, NULL);
+        ImGuiExt::SliderFloatWithSteps("Angle Z", &angle.z, -1.0f, 1.0f, 0.05f, NULL);
         ImGui::SliderFloat("Distance", &targetDistance, 0.0f, 1000.0f);
-        // ImGui::SliderFloatWithSteps("FOV", &camera.fovy, .0f, 100.0f, 1.0f, NULL);
-        // ImGui::SliderFloatWithSteps("UP Y", &camera.up.y, .0f, 100.0f, 1.0f, NULL);
+        ImGuiExt::SliderFloatWithSteps("FOV", &camera.fovy, .0f, 100.0f, 1.0f, NULL);
+        ImGuiExt::SliderFloatWithSteps("UP Y", &camera.up.y, .0f, 100.0f, 1.0f, NULL);
     ImGui::End();
 }
 
