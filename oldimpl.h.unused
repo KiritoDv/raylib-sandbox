@@ -1,0 +1,127 @@
+#include "chunk.h"
+#include "game.h"
+#include "raymath.h"
+#define RLIGHTS_IMPLEMENTATION
+#include "rlights.h"
+#include <string>
+#include <iostream>
+
+using namespace std;
+
+#define TILE_WIDTH_HALF  16.0f
+#define TILE_HEIGHT_HALF 8.0f
+#define DrawCenteredText(text, x, y, size) DrawText(text.c_str(), x - (MeasureText(text.c_str(), size) / 2), y, size, WHITE);
+
+int maxInstances = 16 * 32 * 16;
+Shader shader;
+Mesh cube;
+Matrix *rotations;
+Matrix *rotationsInc;
+Matrix *translations;
+Matrix *transforms;
+Material material;
+
+void Chunk::bakeChunk(Camera3D camera){
+    int mapWidth = 32 * 16;
+    int mapHeight = TILE_WIDTH_HALF * 16 + TILE_WIDTH_HALF;
+    Vector3 cubeSize = { 1.0f, 1.0f, 1.0f };
+
+    cube         = GenMeshCube(1.0f, 1.0f, 1.0f);
+    rotations    = new Matrix[maxInstances]; // Rotation state of instances
+    rotationsInc = new Matrix[maxInstances]; // Per-frame rotation animation of instances
+    translations = new Matrix[maxInstances]; // Locations of instances
+    transforms   = new Matrix[maxInstances]; // Final transform of instances
+    shader = LoadShader("assets/shaders/base_lighting_instanced.vs", "assets/shaders/lighting.fs");
+    shader.locs[SHADER_LOC_MATRIX_MVP] = GetShaderLocation(shader, "mvp");
+    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocationAttrib(shader, "instanceTransform");
+
+    int ambientLoc = GetShaderLocation(shader, "ambient");
+    SetShaderValue(shader, ambientLoc, (float[4]){ 0.2f, 0.2f, 0.2f, 1.0f }, SHADER_UNIFORM_VEC4);
+    CreateLight(LIGHT_DIRECTIONAL, (Vector3){ 50.0f, 50.0f, 0.0f }, Vector3Zero(), WHITE, shader);
+    material = LoadMaterialDefault();
+    material.shader = shader;
+    material.maps[MATERIAL_MAP_DIFFUSE].color = RED;
+
+    int instanceId = 0;
+    for(int x = 0; x < 16; x++) {
+        for(int y = 0; y < 32; y++) {
+            for(int z = 0; z < 16; z++) {
+                if(!blocks[x][y][z]) continue;
+                Block* block = blocks[x][y][z];
+                Vector3 position = { (this->offset.x * 16.0f) + x, (float) y, (this->offset.y * 16.0f) + z };
+                Model model = models[block->texture];
+                translations[instanceId] = MatrixTranslate(x + this->offset.x * 16.0f, (float)y, (this->offset.y * 16.0f) + z);
+                rotations[instanceId] = MatrixIdentity();
+                Vector3 axis = Vector3Normalize((Vector3){ 0.0f, .0f, 0.0f });
+                rotationsInc[instanceId] = MatrixRotate(axis, 0);
+                instanceId++;
+            }
+        }
+    }
+    cout << "Baked " << instanceId << " instances" << endl;
+}
+
+void Chunk::drawChunk(Camera3D camera) {
+    float cameraPos[3] = { camera.position.x, camera.position.y, camera.position.z };
+    SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos, SHADER_UNIFORM_VEC3);
+    for (int i = 0; i < maxInstances; i++) {
+        rotations[i] = MatrixMultiply(rotations[i], rotationsInc[i]);
+        transforms[i] = MatrixMultiply(rotations[i], translations[i]);
+        transforms[i] = MatrixMultiply(transforms[i], MatrixTranslate(0.0f, 0.0f, 0.0f));
+    }
+
+    float xPos = ((this->offset.x * 16) - (this->offset.y * 16)) * TILE_WIDTH_HALF;
+    float yPos = ((this->offset.x * 16) + (this->offset.y * 16)) * TILE_HEIGHT_HALF;
+    DrawMeshInstanced(cube, material, transforms, maxInstances);
+}
+
+
+
+////////////////////////////
+
+{
+                // DrawModel(model, cubePosition, block->scale, block == hit_blocks[0] ? LIGHTGRAY : block->color);
+                // DrawCubeWires(Vector3Add(cubePosition, Vector3({.0f, 0.f, .0f})), 1.0f, 1.f, 1.0f, BLACK);
+                // block->collision = GetRayCollisionBox(ray, (BoundingBox){(Vector3){ cubePosition.x - cubeSize.x/2, cubePosition.y - cubeSize.y/2, cubePosition.z - cubeSize.z/2 }, (Vector3){ cubePosition.x + cubeSize.x/2, cubePosition.y + cubeSize.y/2, cubePosition.z + cubeSize.z/2 }});
+                // if(block->texture == "Rupee"){
+                //     // model.transform = MatrixRotate(model.transform, Vector3({0.0f, 1.0f, 0.0f}), 90.0f);
+                // }
+                // if(block->collision.hit && find(hit_blocks.begin(), hit_blocks.end(), block) == hit_blocks.end()) {
+                //     hit_blocks.push_back(block);
+                // }
+                // if(block == hit_blocks[0]){
+                //     if(IsMouseButtonPressed(0)){
+                //         blocks[x][y][z] = NULL;
+                //     }
+                //     if(IsMouseButtonPressed(1)){
+                //         Block* b = new Block();
+                //         b->color = {100, 20, 100, 255};
+                //         b->position = Vector2({(float)x, (float)y});
+                //         b->texture = "Cube";
+                //         b->scale = .5f;
+                //         blocks[x][y + 1][z] = b;
+                //     }
+                // }
+                }
+
+
+for(int x = 0; x < 16; x++) {
+        for(int y = 0; y < 32; y++) {
+            for(int z = 0; z < 16; z++) {
+                if(!blocks[x][y][z]) continue;
+                Block* block = blocks[x][y][z];
+                float xPos = ((mapWidth / 2) + (x - y) * TILE_WIDTH_HALF) - TILE_WIDTH_HALF;
+                float yPos = (x + y) * TILE_HEIGHT_HALF;
+                string pos = (to_string(x + (int) this->offset.x * 16) + "-" + to_string(y + (int) this->offset.y * 16));
+                Vector3 cubePosition = { (this->offset.x * 16.0f) + x, (float) y, (this->offset.y * 16.0f) + z };
+                Model model = models[block->texture];
+                translations[instanceId] = MatrixTranslate(x + this->offset.x * 16.0f, (float)y, (this->offset.y * 16.0f) + z);
+                rotations[instanceId] = MatrixIdentity();
+                Vector3 axis = Vector3Normalize((Vector3){ 0.0f, .0f, 0.0f });
+                rotationsInc[instanceId] = MatrixRotate(axis, 0);
+
+                instanceId++;
+            }
+        }
+    }
